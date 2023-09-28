@@ -1,6 +1,6 @@
-# Driver Drowsiness Detection
+# Gauging Fatigue & Sleepiness using Computer Vision
 
-A computer vision project that aims to reduce car accidents by detecting if the driver is a wake or not then it takes a specific action. for our case, we used a recommendation system to play energetic music to help the driver stay awake and focused.
+Aiming to improve the quality of studying time for students: Optimizing focus to improve learning efficacy and memory retention.
 
 **This repo hosts the command line interface and the deployment**
 
@@ -13,7 +13,7 @@ A computer vision project that aims to reduce car accidents by detecting if the 
 
 ## 2. Clone the repo
 ```bash
-git clone https://github.com/Ahmedsaed/Driver-Drowsiness-Detection.git
+git clone [https://github.com/Ahmedsaed/Driver-Drowsiness-Detection.git](https://github.com/X3CyO/ApplyAI_2023.git)
 ```
 
 ## 3. Update permissions 
