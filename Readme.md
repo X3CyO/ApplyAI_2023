@@ -13,7 +13,7 @@ Aiming to improve the quality of studying time for students: Optimizing focus to
 
 ## 2. Clone the repo
 ```bash
-git clone [https://github.com/Ahmedsaed/Driver-Drowsiness-Detection.git](https://github.com/X3CyO/ApplyAI_2023.git)
+git clone https://github.com/Ahmedsaed/Driver-Drowsiness-Detection.git
 ```
 
 ## 3. Update permissions 
