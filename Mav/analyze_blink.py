@@ -141,9 +141,8 @@ def blinkRatio(img, landmarks, right_indices, left_indices):
     ratio = (reRatio+leRatio)/2
     return ratio 
 
-person_in_view = False  # Initialize as False since no face is detected initially
 min_detection_confidence = .5 #originally .5; set to 0 to count when the person isnt looking as a ratio to be determined. <1?
-min_tracking_confidence = .5 #originally .5
+min_tracking_confidence = .8 #originally .5
 last_timestamp = None
                 # This determines how open/closed the eye is to append a blink... 4 works well; just might be too much... what is the value of lost blinks vs fakes..?
                 # this also highly depends on how far you are... the further away, the more sensitive the ratio since the eye is smaller.
@@ -222,7 +221,7 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
 
             # Determine if a person is in view based on face detection confidence
             if results.multi_face_landmarks:
-                    person_in_view = True
+                    person_in_view = True #pseudo code
                     mesh_coords = landmarksDetection(frame, results, False)
                     ratio = blinkRatio(frame, mesh_coords, RIGHT_EYE, LEFT_EYE)
 
@@ -252,11 +251,11 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                             # Log the frame index and eye status (0 for closed)
                             csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 0])
                             # No frame, log a blank entry
-            else:
-                person_in_view = False
-                if not person_in_view:
-                    csv_writer.writerow([elapsed_time_str, fraction, frame_counter, -1])
-                    utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
+        else:
+            person_in_view = False #pseudo code
+            if not person_in_view:
+                csv_writer.writerow([elapsed_time_str, fraction, frame_counter, -1])
+                utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
         if not ret: 
             break # no more frames break    
 
