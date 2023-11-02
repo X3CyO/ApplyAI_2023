@@ -170,7 +170,15 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
     
     # starting Video loop here.
     while True:
-        frame_counter +=1 # frame counter
+        frame_counter += 1  # frame counter
+        ret, frame = camera.read()  # Getting frame from camera
+
+        if not ret:
+            break  # No more frames, break
+
+        if frame is None:
+            continue  # Skip frames that are None
+
         ret, frame, prev_frame = camera.read() # getting frame from camera 
         face_results = face_mesh.process(frame)
 

@@ -105,8 +105,17 @@ def euclaideanDistance(point, point1):
     distance = math.sqrt((x1 - x)**2 + (y1 - y)**2)
     return distance
 
-# Blinking Ratio
-def blinkRatio(img, landmarks, right_indices, left_indices):
+def blinkRatioWithStabilityAndTracking(img, landmarks, right_indices, left_indices, prev_frame, prev_landmarks=None, stability_threshold=0.1):
+    if prev_landmarks is not None:
+        # Calculate optical flow to track landmarks from the previous frame to the current frame
+        updated_landmarks, _ = optical_flow_tracking(prev_frame, img, prev_landmarks)
+
+        # Calculate motion between tracked landmarks
+        motion = calculate_motion(landmarks, updated_landmarks)
+
+        # Check stability based on motion magnitude
+        if motion > stability_threshold:
+            return None  # Frame is considered unstable
     # Right eyes 
     # horizontal line 
     rh_right = landmarks[right_indices[0]]
@@ -139,11 +148,31 @@ def blinkRatio(img, landmarks, right_indices, left_indices):
     leRatio = lhDistance/lvDistance
 
     ratio = (reRatio+leRatio)/2
-    return ratio 
+    return ratio , updated_landmarks
 
-person_in_view = False  # Initialize as False since no face is detected initially
+def optical_flow_tracking(prev_frame, current_frame, prev_landmarks):
+    # Convert the list of landmarks to a NumPy array
+    prev_points = np.array(prev_landmarks, dtype=np.float32)
+
+    # Calculate optical flow
+    current_points, status, _ = cv.calcOpticalFlowPyrLK(prev_frame, current_frame, prev_points, None)
+
+    # Filter out points with low tracking quality
+    good_points = prev_points[status == 1]
+    updated_points = current_points[status == 1]
+
+    # Convert the updated points back to a list
+    updated_landmarks = updated_points.tolist()
+
+    return updated_landmarks
+
+def calculate_motion(current_landmarks, prev_landmarks):
+    # Calculate motion between previous and current landmarks
+    motion = sum(euclaideanDistance(curr, prev) for curr, prev in zip(current_landmarks, prev_landmarks))
+    return motion
+
 min_detection_confidence = .5 #originally .5; set to 0 to count when the person isnt looking as a ratio to be determined. <1?
-min_tracking_confidence = .5 #originally .5
+min_tracking_confidence = .8 #originally .5
 last_timestamp = None
                 # This determines how open/closed the eye is to append a blink... 4 works well; just might be too much... what is the value of lost blinks vs fakes..?
                 # this also highly depends on how far you are... the further away, the more sensitive the ratio since the eye is smaller.
@@ -161,6 +190,7 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
 
         # Calculate the elapsed time and format it as HH:MM:SS:#/60
         elapsed_time = time.time() - start_time
+
 
         # Calculate the elapsed time in seconds and fractions
         elapsed_seconds = int(elapsed_time)
@@ -187,9 +217,6 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
 
                 # Calculate the average of both distances
                 average_distance = (distance1 + distance2) / 2
-
-                # Create consideration for the point on the top of the head to ensure that if its not seen, that the tracking stops (prevents upwards head tilt)
-                
 
                 # Adjust the mid-point as needed
                 mid_x, mid_y, mid_z = 0, 0, 0
@@ -224,7 +251,7 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
 
             # Determine if a person is in view based on face detection confidence
             if results.multi_face_landmarks:
-                    person_in_view = True
+                    person_in_view = True #pseudo code
                     mesh_coords = landmarksDetection(frame, results, False)
                     ratio = blinkRatio(frame, mesh_coords, RIGHT_EYE, LEFT_EYE)
 
@@ -255,7 +282,7 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                             csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 0])
                             # No frame, log a blank entry
         else:
-            person_in_view = False
+            person_in_view = False #pseudo code
             if not person_in_view:
                 csv_writer.writerow([elapsed_time_str, fraction, frame_counter, -1])
                 utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
@@ -287,19 +314,22 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
 
 # Folder paths
 original_folder = "original_data"
+
 # Create the folders if they don't exist
 os.makedirs(original_folder, exist_ok=True)
 
 # Make a copy of the original CSV file
 timestamp = time.strftime("%Y%m%d%H%M%S")
-duplicated_csv_filename = f"original_eye_status_log_duplicate_{timestamp}.csv"
+duplicated_csv_filename = f"2original_eye_status_log_duplicate_{timestamp}.csv"
 shutil.copy(csv_filename, os.path.join(original_folder, duplicated_csv_filename))
 print(f"Original CSV file duplicated with timestamp: {duplicated_csv_filename}")
 
 
 # Interpolate the missing 1/60 segments
 
-output_csv_filename = "current_hz_interpolated_eye_status_log.csv"
+output_csv_filename = "hz_interpolated_eye_status_log.csv"
+
+import csv
 
 def interpolate_data(csv_filename, output_csv_filename):
     # Initialize the CSV reader and writer
@@ -320,7 +350,7 @@ def interpolate_data(csv_filename, output_csv_filename):
             # for weird pattern disruptions; 58 then 0 for example. 
             if values[0] - last_value < 0:
                 for missing_value in range(last_value + 1, values[0]):
-                    interpolated_row = [timestamp] + [int(missing_value), 0] + [""]
+                    interpolated_row = [timestamp] + [int(missing_value), 0] + ["", ""]
                     csv_writer.writerow(interpolated_row)
                 # Check if the fractional seconds have rolled over to 0
                 if values[1] == 0 and last_value == 59:
@@ -328,7 +358,7 @@ def interpolate_data(csv_filename, output_csv_filename):
             # Check for missing values and interpolate
             if values[0] - last_value > 0:
                 for missing_value in range(last_value + 1, values[0]):
-                    interpolated_row = [timestamp] + [int(missing_value), 0] + [""]
+                    interpolated_row = [timestamp] + [int(missing_value), 0] + ["", ""]
                     csv_writer.writerow(interpolated_row)
 
             # Check if the fractional seconds have rolled over to 0
@@ -346,70 +376,12 @@ def interpolate_data(csv_filename, output_csv_filename):
 # Call the function to interpolate the data
 interpolate_data(csv_filename, output_csv_filename)
 
+# Make a copy of the hz interpolated file
 # Make the folder
-hz_interpolated_folder = "hz_interpolated_data"
-os.makedirs(hz_interpolated_folder, exist_ok=True)
+interpolated_folder = "hz_interpolated_data"
+os.makedirs(interpolated_folder, exist_ok=True)
 
-# Make a copy of the hz interpolated file twice: one to transform; one for storage
+# Make a copy of the hz interpolated file
 duplicated_csv_filename2 = f"hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
-shutil.copy(output_csv_filename, os.path.join(hz_interpolated_folder, duplicated_csv_filename2))
+shutil.copy(output_csv_filename, os.path.join(interpolated_folder, duplicated_csv_filename2))
 print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename2}")
-
-output_csv_filename3 = "current_hz_interpolated_eye_status_log1.csv"
-def copy_file_to_same_directory(output_csv_filename):
-    # Get the directory where the source file is located
-    source_directory = os.path.dirname(output_csv_filename)
-    
-    filename = "current_hz_interpolated_eye_status_log1.csv"
-    
-    # Create the destination path in the same directory
-    destination_path = os.path.join(source_directory, filename)
-    
-    # Copy the file to the same directory
-    shutil.copy(output_csv_filename, destination_path)
-
-copy_file_to_same_directory(output_csv_filename)
-
-
-output_csv_filename4 = "current_values_hz_interpolated_data"
-input_csv_filename = output_csv_filename3
-
-def interpolate_data(input_csv_filename, output_csv_filename4):
-    # Initialize the CSV reader and writer
-    with open(input_csv_filename, 'r') as csv_in, open(output_csv_filename4, 'w', newline='') as csv_out:
-        csv_reader = csv.reader(csv_in)
-        csv_writer = csv.writer(csv_out)
-
-        last_value = None  # Initialize last_value to None
-
-        for row in csv_reader:
-            if len(row) < 3:
-                continue  # Skip rows with fewer than 3 columns
-
-            timestamp = row[0]
-            values = row[1:-1]  # Extract values from the second to the second-to-last column
-            final_column_value = row[-1]
-
-            # Check if the row in front of it contains a new value, otherwise fill with the number behind it
-            if final_column_value.strip():
-                last_value = final_column_value  # Update last_value with the new value
-
-            interpolated_values = [last_value] if final_column_value.strip() else [last_value]
-
-            # Append the timestamp, original values, and interpolated values to the output
-            interpolated_row = [timestamp] + values + interpolated_values
-            csv_writer.writerow(interpolated_row)
-            
-# Call the interpolation function
-interpolate_data(input_csv_filename, output_csv_filename4)
-
-# Directory name
-values_interpolated_folder = "values_hz_interpolated_data"
-    
-# Create the directory
-os.makedirs(values_interpolated_folder, exist_ok=True)
-
-# Make a copy of the values + hz interpolated file
-duplicated_csv_filename = f"value_hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
-shutil.copy(output_csv_filename3, os.path.join(values_interpolated_folder, duplicated_csv_filename))
-print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
