@@ -10,6 +10,21 @@ import math
 import shutil #for duplicating files
 import os
 
+def get_user_input():
+    while True:
+        try:
+            user_input = int(input("Please enter your ESS Score: "))
+            if 1 <= user_input <= 20:
+                return user_input
+            else:
+                print("Invalid input. Please enter a valid ESS Score between 1-20.")
+        except ValueError:
+            print("Invalid input. Please enter a valid ESS Score between 1-20.")
+
+user_number = get_user_input()
+print(f"You entered: {user_number}")
+
+
 # Initialize the face landmarks detection module
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False)
@@ -292,7 +307,7 @@ os.makedirs(original_folder, exist_ok=True)
 
 # Make a copy of the original CSV file
 timestamp = time.strftime("%Y%m%d%H%M%S")
-duplicated_csv_filename = f"original_eye_status_log_duplicate_{timestamp}.csv"
+duplicated_csv_filename = f"original_eye_status_log_{timestamp}.csv"
 shutil.copy(csv_filename, os.path.join(original_folder, duplicated_csv_filename))
 print(f"Original CSV file duplicated with timestamp: {duplicated_csv_filename}")
 
@@ -351,7 +366,7 @@ hz_interpolated_folder = "hz_interpolated_data"
 os.makedirs(hz_interpolated_folder, exist_ok=True)
 
 # Make a copy of the hz interpolated file twice: one to transform; one for storage
-output_csv_filename2 = f"hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
+output_csv_filename2 = f"hz_interpolated_eye_status_log_{timestamp}.csv"
 shutil.copy(output_csv_filename, os.path.join(hz_interpolated_folder, output_csv_filename2))
 print(f"Interpolated CSV file duplicated with timestamp: {output_csv_filename2}")
 
@@ -417,6 +432,40 @@ values_hz_interpolated_folder = "values_hz_interpolated_data"
 os.makedirs(values_hz_interpolated_folder, exist_ok=True)
 
 # Make a copy of the values + hz interpolated file
-duplicated_csv_filename = f"value_hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
+duplicated_csv_filename = f"value_hz_interpolated_eye_status_log_{timestamp}.csv"
 shutil.copy(output_csv_filename3, os.path.join(values_hz_interpolated_folder, duplicated_csv_filename))
 print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
+
+input_csv_filename = output_csv_filename3
+
+output_csv_filename = f"current_{user_number}_ESS.csv"
+def extract_and_save_final_column(input_csv_filename, output_csv_filename):
+    extracted_column = []
+
+    with open(input_csv_filename, 'r') as csv_in:
+        csv_reader = csv.reader(csv_in)
+
+        for row in csv_reader:
+            if row:
+                last_value = row[-1]
+                extracted_column.append([last_value])
+
+    with open(output_csv_filename, 'w', newline='') as csv_out:
+        csv_writer = csv.writer(csv_out)
+        csv_writer.writerows(extracted_column)
+
+extract_and_save_final_column(input_csv_filename, output_csv_filename)
+
+# Directory name
+ESS_folder = "ESS_Data"
+    
+# Create the directory
+os.makedirs(ESS_folder, exist_ok=True)
+
+# Make a copy of the values + hz interpolated file
+duplicated_csv_filename = f"{user_number}_ESS_{timestamp}.csv"
+shutil.copy(output_csv_filename, os.path.join(ESS_folder, duplicated_csv_filename))
+print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
+
+
+print(f"Thank you for participating!")
