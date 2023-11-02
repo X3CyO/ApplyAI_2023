@@ -351,32 +351,16 @@ hz_interpolated_folder = "hz_interpolated_data"
 os.makedirs(hz_interpolated_folder, exist_ok=True)
 
 # Make a copy of the hz interpolated file twice: one to transform; one for storage
-duplicated_csv_filename2 = f"hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
-shutil.copy(output_csv_filename, os.path.join(hz_interpolated_folder, duplicated_csv_filename2))
-print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename2}")
+output_csv_filename2 = f"hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
+shutil.copy(output_csv_filename, os.path.join(hz_interpolated_folder, output_csv_filename2))
+print(f"Interpolated CSV file duplicated with timestamp: {output_csv_filename2}")
 
-output_csv_filename3 = "current_hz_interpolated_eye_status_log1.csv"
-def copy_file_to_same_directory(output_csv_filename):
-    # Get the directory where the source file is located
-    source_directory = os.path.dirname(output_csv_filename)
-    
-    filename = "current_hz_interpolated_eye_status_log1.csv"
-    
-    # Create the destination path in the same directory
-    destination_path = os.path.join(source_directory, filename)
-    
-    # Copy the file to the same directory
-    shutil.copy(output_csv_filename, destination_path)
+output_csv_filename3 = "current_values_hz_interpolated_data"
+input_csv_filename = output_csv_filename
 
-copy_file_to_same_directory(output_csv_filename)
-
-
-output_csv_filename4 = "current_values_hz_interpolated_data"
-input_csv_filename = output_csv_filename3
-
-def interpolate_data(input_csv_filename, output_csv_filename4):
+def interpolate_data(input_csv_filename, output_csv_filename3):
     # Initialize the CSV reader and writer
-    with open(input_csv_filename, 'r') as csv_in, open(output_csv_filename4, 'w', newline='') as csv_out:
+    with open(input_csv_filename, 'r') as csv_in, open(output_csv_filename3, 'w', newline='') as csv_out:
         csv_reader = csv.reader(csv_in)
         csv_writer = csv.writer(csv_out)
 
@@ -399,17 +383,40 @@ def interpolate_data(input_csv_filename, output_csv_filename4):
             # Append the timestamp, original values, and interpolated values to the output
             interpolated_row = [timestamp] + values + interpolated_values
             csv_writer.writerow(interpolated_row)
-            
+
 # Call the interpolation function
-interpolate_data(input_csv_filename, output_csv_filename4)
+interpolate_data(input_csv_filename, output_csv_filename3)
+
+
+# Check the beginning if there's a lack of data for it, and delete the rows that are missing data in the last column.
+def check_and_clean_csv(output_csv_filename3):
+    # Create a temporary list to store rows with missing values in the last column
+    cleaned_rows = []
+
+    with open(output_csv_filename3, 'r') as csv_in:
+        csv_reader = csv.reader(csv_in)
+
+        for row in csv_reader:
+            if row and not row[-1].strip():  # Check if the last column is missing or blank
+                continue  # Skip rows with missing values in the last column
+            cleaned_rows.append(row)
+
+    # Write the cleaned rows back to the CSV file
+    with open(output_csv_filename3, 'w', newline='') as csv_out:
+        csv_writer = csv.writer(csv_out)
+        csv_writer.writerows(cleaned_rows)
+
+    print(f"Rows with missing values in the last column have been removed.")
+
+check_and_clean_csv(output_csv_filename3)
 
 # Directory name
-values_interpolated_folder = "values_hz_interpolated_data"
+values_hz_interpolated_folder = "values_hz_interpolated_data"
     
 # Create the directory
-os.makedirs(values_interpolated_folder, exist_ok=True)
+os.makedirs(values_hz_interpolated_folder, exist_ok=True)
 
 # Make a copy of the values + hz interpolated file
 duplicated_csv_filename = f"value_hz_interpolated_eye_status_log_duplicate_{timestamp}.csv"
-shutil.copy(output_csv_filename3, os.path.join(values_interpolated_folder, duplicated_csv_filename))
+shutil.copy(output_csv_filename3, os.path.join(values_hz_interpolated_folder, duplicated_csv_filename))
 print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
