@@ -13,7 +13,7 @@ import os
 def get_user_input():
     while True:
         try:
-            user_input = int(input("Please enter your ESS Score: "))
+            user_input = int(input("Please enter your ESS Score then look directly into your camera to begin face mesh initialization (the closer the better): "))
             if 1 <= user_input <= 20:
                 return user_input
             else:
@@ -209,16 +209,17 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                 # Adjust the mid-point as needed
                 mid_x, mid_y, mid_z = 0, 0, 0
 
+
                 # Define the new position for the text (upper right corner)
-                x = frame.shape[1] - 1000  # Adjust this value to control the horizontal position
+                x = 25  # Adjust this value to control the horizontal position
                 y = 75  # Adjust this value to control the vertical position
                 
                 # Black outline
-                cv.putText(frame, "Relative distance ratio from center of face: " + str(round(average_distance, 2)), (x, y), FONTS,
+                cv.putText(frame, "Relative distance from face: " + str(round(average_distance, 2)), (x, y), FONTS,
                         1,(0,0,0), 5)
                 
                 # White fill
-                cv.putText(frame, "Relative distance ratio from center of face: " + str(round(average_distance, 2)), (x, y), FONTS,
+                cv.putText(frame, "Relative distance from face: " + str(round(average_distance, 2)), (x, y), FONTS,
                         1, (255, 255, 255), 3)
                 
             #  resizing frame
@@ -244,10 +245,10 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                     ratio = blinkRatio(frame, mesh_coords, RIGHT_EYE, LEFT_EYE)
 
                     # cv.putText(frame, f'ratio {ratio}', (100, 100), FONTS, 1.0, utils.GREEN, 2)
-                    utils.colorBackgroundText(frame,  f'Ratio : {round(ratio,2)}', FONTS, 0.7, (30,100),2, utils.PINK, utils.YELLOW)
+                    utils.colorBackgroundText(frame,  f'Ratio : {round(ratio,2)}', FONTS, 0.7, (30,150),2, utils.PINK, utils.YELLOW)
                     utils.colorBackgroundText(frame,  f'Distance Weight : {round(ratio_criteria,2)}', FONTS, 0.7, (30,200),2, utils.PINK, utils.YELLOW)
                     # cv.putText(frame, f'Total Blinks: {TOTAL_BLINKS}', (100, 150), FONTS, 0.6, utils.GREEN, 2)
-                    utils.colorBackgroundText(frame,  f'Total Frames w/ Eyes Closed: {TOTAL_BLINKS}', FONTS, 0.7, (30,150),2)
+                    utils.colorBackgroundText(frame,  f'Total Frames w/ Eyes Closed: {TOTAL_BLINKS}', FONTS, 0.7, (30,250),2)
                     cv.polylines(frame,  [np.array([mesh_coords[p] for p in LEFT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
                     cv.polylines(frame,  [np.array([mesh_coords[p] for p in RIGHT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
                     
@@ -280,7 +281,7 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
         # Calculate FPS
         end_time = time.time() - start_time
         fps = frame_counter / end_time
-        frame = utils.textWithBackground(frame,f'FPS: {round(fps,1)}',FONTS, 1.0, (30, 50), bgOpacity=0.9, textThickness=2)
+        frame = utils.textWithBackground(frame,f'FPS: {round(fps,1)}',FONTS, 1.0, (30, 100), bgOpacity=0.9, textThickness=2)
         # writing image for thumbnail drawing shape
         # cv.imwrite(f'img/frame_{frame_counter}.png', frame)
         cv.imshow('frame', frame)
@@ -322,42 +323,37 @@ def interpolate_data(csv_filename, output_csv_filename):
         csv_reader = csv.reader(csv_in)
         csv_writer = csv.writer(csv_out)
 
-        last_time, last_value = 0, 0
+        last_row = None
 
         for row in csv_reader:
             timestamp = row[0]  # Extract the timestamp from the first column
             values = [int(value) if value != '' else '' for value in row[1:]]  # Extract values from the second column onward
 
-            # Check if the fractional seconds have rolled over to 0
-            if values[1] == 0 and last_value == 59:
-                values[0] = (values[0] + 1) % 60
+            if last_row is not None:
+                if int(last_row[1]) == 59 and int(values[1]) == 0:
+                    # No interpolation needed; simply write the current row
+                    csv_writer.writerow(row[1:])  # Skip the first element (timestamp)
+                else:
+                    # Interpolate any missing values
+                    if int(last_row[1]) > int(values[1]):
+                        for missing_value in range(int(last_row[1]) + 1, 60):
+                            interpolated_row = [int(missing_value), 0] + [""]
+                            csv_writer.writerow(interpolated_row)
+                        for missing_value in range(0, int(values[1])):
+                            interpolated_row = [int(missing_value), 0] + [""]
+                            csv_writer.writerow(interpolated_row)
+                    else:
+                        for missing_value in range(int(last_row[1]) + 1, int(values[1])):
+                            interpolated_row = [int(missing_value), 0] + [""]
+                            csv_writer.writerow(interpolated_row)
+                    # Write the original row without the timestamp
+                    csv_writer.writerow(row[1:])  # Skip the first element (timestamp)
+            else:
+                # Write the first row without the timestamp
+                csv_writer.writerow(row[1:])  # Skip the first element (timestamp)
 
-            # for weird pattern disruptions; 58 then 0 for example. 
-            if values[0] - last_value < 0:
-                for missing_value in range(last_value + 1, values[0]):
-                    interpolated_row = [timestamp] + [int(missing_value), 0] + [""]
-                    csv_writer.writerow(interpolated_row)
-                # Check if the fractional seconds have rolled over to 0
-                if values[1] == 0 and last_value == 59:
-                    values[0] = (values[0] + 1) % 60
-            # Check for missing values and interpolate
-            if values[0] - last_value > 0:
-                for missing_value in range(last_value + 1, values[0]):
-                    interpolated_row = [timestamp] + [int(missing_value), 0] + [""]
-                    csv_writer.writerow(interpolated_row)
-
-            # Check if the fractional seconds have rolled over to 0
-            if values[1] == 0 and last_value == 59:
-                values[0] = (values[0] + 1) % 60
-
-            # Write the original row with commas between values
-            csv_writer.writerow([timestamp] + [int(value) if value != '' else '' for value in values])
-            last_time, last_value = timestamp, int(values[0])
+            last_row = row
             
-            # Check if the fractional seconds have rolled over to 0
-            if values[1] == 0 and last_value == 59:
-                values[0] = (values[0] + 1) % 60
-    
 # Call the function to interpolate the data
 interpolate_data(csv_filename, output_csv_filename)
 
