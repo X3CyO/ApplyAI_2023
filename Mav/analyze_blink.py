@@ -10,6 +10,26 @@ import math
 import shutil #for duplicating files
 import os
 
+# Open the camera you want; can run camera_select.py to find which camera is which by integer/parameters.
+camera = cv.VideoCapture(0)  # Replace # with the appropriate camera index
+# Check if the camera opened successfully
+if not camera.isOpened():
+    print("Error: Camera not found.")
+else:
+    # Set the desired video quality (resolution) aspect ratio = 16:9
+    # 1080p = 1920x1080 (Full HD) -> 720p = 1280x720 (Standard)  -> 480p = 640x480 (Low)
+    # 14 is around the highest fps I can get at 640x480? (lowest I can go) (only need >1/3 of a second; 40fps.. or .3 sec)
+    
+    camera.set(cv.CAP_PROP_FRAME_WIDTH, 640)
+    camera.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
+    camera.set(cv.CAP_PROP_FPS, 60)  # Set frame rate
+
+    # Check if parameters were set successfully
+    print(f"Your current video width has been standardized to: {camera.get(cv.CAP_PROP_FRAME_WIDTH)}")
+    print(f"Your current video height has been standardized to: {camera.get(cv.CAP_PROP_FRAME_HEIGHT)}")
+    print(f"Your current frames per second has been standardized to: {camera.get(cv.CAP_PROP_FPS)}")
+
+
 def get_user_input():
     while True:
         try:
@@ -50,25 +70,6 @@ def apply_ema_filter(current_depth):
 
 def depth_to_distance(depth_value, depth_scale):
     return 1.0 / (depth_value * depth_scale)
-
-# Open the camera you want; can run camera_select.py to find which camera is which by integer/parameters.
-camera = cv.VideoCapture(0)  # Replace # with the appropriate camera index
-# Check if the camera opened successfully
-if not camera.isOpened():
-    print("Error: Camera not found.")
-else:
-    # Set the desired video quality (resolution) aspect ratio = 16:9
-    # 1080p = 1920x1080 (Full HD) -> 720p = 1280x720 (Standard)  -> 480p = 640x480 (Low)
-    # 14 is around the highest fps I can get at 640x480? (lowest I can go) (only need >1/3 of a second; 40fps.. or .3 sec)
-    
-    camera.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-    camera.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
-    camera.set(cv.CAP_PROP_FPS, 60)  # Set frame rate
-
-    # Check if parameters were set successfully
-    print(f"Video width: {camera.get(cv.CAP_PROP_FRAME_WIDTH)}")
-    print(f"Video height: {camera.get(cv.CAP_PROP_FRAME_HEIGHT)}")
-    print(f"Frame rate: {camera.get(cv.CAP_PROP_FPS)}")
 
 # Create and open a CSV file for logging
 csv_filename = "current_eye_status_log.csv"
@@ -274,14 +275,14 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
             person_in_view = False
             if not person_in_view:
                 csv_writer.writerow([elapsed_time_str, fraction, frame_counter, -1])
-                utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
+                utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (0, 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
         if not ret: 
             break # no more frames break    
 
         # Calculate FPS
         end_time = time.time() - start_time
         fps = frame_counter / end_time
-        frame = utils.textWithBackground(frame,f'FPS: {round(fps,1)}',FONTS, 1.0, (30, 100), bgOpacity=0.9, textThickness=2)
+        frame = utils.textWithBackground(frame,f'FPS: {round(fps,1)}',FONTS, 1.0, (100, 100), bgOpacity=0.9, textThickness=2)
         # writing image for thumbnail drawing shape
         # cv.imwrite(f'img/frame_{frame_counter}.png', frame)
         cv.imshow('frame', frame)
@@ -296,7 +297,8 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
     # Calculate FPS
     end_time = time.time() - start_time
     fps = frame_counter / end_time
-    print(f"Frames per second (FPS): {round(fps, 1)}")
+    print(f"Average frames per second for this session (FPS): {round(fps, 1)}")
+    print(f"{(round(fps, 1)/60)*100}% frames per second were captured, and the remaining will be interpolated")
 
     # Close the CSV file at the end of the script
     csv_file.close()
@@ -353,7 +355,7 @@ def interpolate_data(csv_filename, output_csv_filename):
                 csv_writer.writerow(row[1:])  # Skip the first element (timestamp)
 
             last_row = row
-            
+
 # Call the function to interpolate the data
 interpolate_data(csv_filename, output_csv_filename)
 
@@ -417,8 +419,6 @@ def check_and_clean_csv(output_csv_filename3):
         csv_writer = csv.writer(csv_out)
         csv_writer.writerows(cleaned_rows)
 
-    print(f"Rows with missing values in the last column have been removed.")
-
 check_and_clean_csv(output_csv_filename3)
 
 # Directory name
@@ -434,7 +434,7 @@ print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filenam
 
 input_csv_filename = output_csv_filename3
 
-output_csv_filename = f"current_{user_number}_ESS.csv"
+output_csv_filename = f"current_ESS.csv"
 def extract_and_save_final_column(input_csv_filename, output_csv_filename):
     extracted_column = []
 
@@ -453,15 +453,23 @@ def extract_and_save_final_column(input_csv_filename, output_csv_filename):
 extract_and_save_final_column(input_csv_filename, output_csv_filename)
 
 # Directory name
-ESS_folder = "ESS_Data"
-    
-# Create the directory
-os.makedirs(ESS_folder, exist_ok=True)
+parent_directory = "ESS_Data"  # Name of the parent directory
+
+# Create the parent directory if it doesn't exist
+os.makedirs(parent_directory, exist_ok=True)
+
+# Determine the subdirectory based on the user_number condition
+subdirectory = "alert" if user_number < 12 else "sleepy"
+
+# Create the subdirectory if it doesn't exist within the parent directory
+os.makedirs(os.path.join(parent_directory, subdirectory), exist_ok=True)
 
 # Make a copy of the values + hz interpolated file
 duplicated_csv_filename = f"{user_number}_ESS_{timestamp}.csv"
-shutil.copy(output_csv_filename, os.path.join(ESS_folder, duplicated_csv_filename))
+shutil.copy(output_csv_filename, os.path.join(parent_directory, subdirectory, duplicated_csv_filename))
 print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
 
 
-print(f"Thank you for participating!")
+print("*****************************")
+print("Thank you for participating!")
+print("*****************************")
