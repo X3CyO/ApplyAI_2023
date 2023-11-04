@@ -29,6 +29,9 @@ else:
     print(f"Your current video height has been standardized to: {camera.get(cv.CAP_PROP_FRAME_HEIGHT)}")
     print(f"Your current frames per second has been standardized to: {camera.get(cv.CAP_PROP_FPS)}")
 
+print("*******************************************************************************************************")
+print("The camera you're about to use (if it has an indicator light), should have automatically turned on now.")
+print("*******************************************************************************************************")
 
 def get_user_input():
     while True:
@@ -204,12 +207,13 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                 # Calculate the average of both distances
                 average_distance = (distance1 + distance2) / 2
 
-                # Create consideration for the point on the top of the head to ensure that if its not seen, that the tracking stops (prevents upwards head tilt)
-                
+                # trying to account for head tilt
+                landmark_9 = face_landmarks.landmark[9]
+
+                distance3 = math.sqrt((landmark_10.x - landmark_9.x)**2 + (landmark_10.y - landmark_9.y)**2 + (landmark_10.z - landmark_9.z)**2)
 
                 # Adjust the mid-point as needed
                 mid_x, mid_y, mid_z = 0, 0, 0
-
 
                 # Define the new position for the text (upper right corner)
                 x = 25  # Adjust this value to control the horizontal position
@@ -221,56 +225,71 @@ with map_face_mesh.FaceMesh(min_detection_confidence = min_detection_confidence,
                 
                 # White fill
                 cv.putText(frame, "Relative distance from face: " + str(round(average_distance, 2)), (x, y), FONTS,
-                        1, (255, 255, 255), 3)
+                        1, (255, 255, 255), 3)    
                 
-            #  resizing frame
-            frame = cv.resize(frame, None, fx=1.5, fy=1.5, interpolation=cv.INTER_CUBIC)
-            frame_height, frame_width= frame.shape[:2]
-            rgb_frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
-            results  = face_mesh.process(rgb_frame)
+                # The size of the forehead should change with the distance, thus, remaining the same as the head moves
+                #This should then account for tilt only
+                
+                forehead_tilt = (distance3/average_distance) # When forehead small (when accounting for distance, then say out of frame)
 
-            # Convert elapsed_time to a human-readable format (e.g., HH:MM:SS)
-            elapsed_time_sec = time.strftime('%H:%M:%S', time.gmtime(elapsed_time))
+                cv.putText(frame, "Forehead Tilt: " + str(round(forehead_tilt, 2)), (x, y+400), FONTS,
+                        1, (255, 255, 255), 3)   
+                        
+            else:
+                #  resizing frame
+                frame = cv.resize(frame, None, fx=1.5, fy=1.5, interpolation=cv.INTER_CUBIC)
+                frame_height, frame_width= frame.shape[:2]
+                rgb_frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
+                results  = face_mesh.process(rgb_frame)
 
-            # Display elapsed time on the frame
-            cv.putText(frame, f'Elapsed Time: {elapsed_time_sec}', (10, 30), FONTS, 1, (0, 255, 0), 2) 
+                # Convert elapsed_time to a human-readable format (e.g., HH:MM:SS)
+                elapsed_time_sec = time.strftime('%H:%M:%S', time.gmtime(elapsed_time))
 
-            # Set the degree change per 0.01 point change in ratio
-            x = average_distance
-            ratio_criteria = (-6.78*x + 6.14)  # Adjust this value as needed
+                # Display elapsed time on the frame
+                cv.putText(frame, f'Elapsed Time: {elapsed_time_sec}', (10, 30), FONTS, 1, (0, 255, 0), 2) 
+
+                # Set the degree change per 0.01 point change in ratio
+                x = average_distance
+                ratio_criteria = (-6.78*x + 6.14)  # Adjust this value as needed
 
             # Determine if a person is in view based on face detection confidence
             if results.multi_face_landmarks:
-                    person_in_view = True
-                    mesh_coords = landmarksDetection(frame, results, False)
-                    ratio = blinkRatio(frame, mesh_coords, RIGHT_EYE, LEFT_EYE)
+                    if forehead_tilt >=.21:
+                        person_in_view = True
+                        mesh_coords = landmarksDetection(frame, results, False)
+                        ratio = blinkRatio(frame, mesh_coords, RIGHT_EYE, LEFT_EYE)
 
-                    # cv.putText(frame, f'ratio {ratio}', (100, 100), FONTS, 1.0, utils.GREEN, 2)
-                    utils.colorBackgroundText(frame,  f'Ratio : {round(ratio,2)}', FONTS, 0.7, (30,150),2, utils.PINK, utils.YELLOW)
-                    utils.colorBackgroundText(frame,  f'Distance Weight : {round(ratio_criteria,2)}', FONTS, 0.7, (30,200),2, utils.PINK, utils.YELLOW)
-                    # cv.putText(frame, f'Total Blinks: {TOTAL_BLINKS}', (100, 150), FONTS, 0.6, utils.GREEN, 2)
-                    utils.colorBackgroundText(frame,  f'Total Frames w/ Eyes Closed: {TOTAL_BLINKS}', FONTS, 0.7, (30,250),2)
-                    cv.polylines(frame,  [np.array([mesh_coords[p] for p in LEFT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
-                    cv.polylines(frame,  [np.array([mesh_coords[p] for p in RIGHT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
-                    
-                    if ratio >= ratio_criteria:
-                        CEF_COUNTER += 1
-                        # cv.putText(frame, 'Blink', (200, 50), FONTS, 1.3, utils.PINK, 2)
-                        utils.colorBackgroundText(frame,  f'Eyes Closed', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
+                        # cv.putText(frame, f'ratio {ratio}', (100, 100), FONTS, 1.0, utils.GREEN, 2)
+                        utils.colorBackgroundText(frame,  f'Ratio : {round(ratio,2)}', FONTS, 0.7, (30,150),2, utils.PINK, utils.YELLOW)
+                        utils.colorBackgroundText(frame,  f'Distance Weight : {round(ratio_criteria,2)}', FONTS, 0.7, (30,200),2, utils.PINK, utils.YELLOW)
+                        # cv.putText(frame, f'Total Blinks: {TOTAL_BLINKS}', (100, 150), FONTS, 0.6, utils.GREEN, 2)
+                        utils.colorBackgroundText(frame,  f'Total Frames w/ Eyes Closed: {TOTAL_BLINKS}', FONTS, 0.7, (30,250),2)
+                        cv.polylines(frame,  [np.array([mesh_coords[p] for p in LEFT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
+                        cv.polylines(frame,  [np.array([mesh_coords[p] for p in RIGHT_EYE ], dtype=np.int32)], True, utils.GREEN, 1, cv.LINE_AA)
 
-                    if ratio < ratio_criteria:
-                        # Log the frame index and eye status (1 for open)
-                        csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 1])
-                        utils.colorBackgroundText(frame,  f'Eyes Open', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
+                        if ratio >= ratio_criteria:
+                            CEF_COUNTER += 1
+                            # cv.putText(frame, 'Blink', (200, 50), FONTS, 1.3, utils.PINK, 2)
+                            utils.colorBackgroundText(frame,  f'Eyes Closed', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
 
+                        if ratio < ratio_criteria:
+                            # Log the frame index and eye status (1 for open)
+                            csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 1])
+                            utils.colorBackgroundText(frame,  f'Eyes Open', FONTS, 1.7, (int(frame_height/2), 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
+                        
+                        else:
+                            if CEF_COUNTER > CLOSED_EYES_FRAME:
+                                TOTAL_BLINKS += 1
+                                CEF_COUNTER = 0
+
+                                # Log the frame index and eye status (0 for closed)
+                                csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 0])
+                                # No frame, log a blank entry
                     else:
-                        if CEF_COUNTER > CLOSED_EYES_FRAME:
-                            TOTAL_BLINKS += 1
-                            CEF_COUNTER = 0
-
-                            # Log the frame index and eye status (0 for closed)
-                            csv_writer.writerow([elapsed_time_str, fraction, frame_counter, 0])
-                            # No frame, log a blank entry
+                        person_in_view = False
+                        if not person_in_view:
+                            csv_writer.writerow([elapsed_time_str, fraction, frame_counter, -1])
+                            utils.colorBackgroundText(frame,  f'Out of Frame', FONTS, 1.7, (0, 100), 2, utils.YELLOW, pad_x=6, pad_y=6)
         else:
             person_in_view = False
             if not person_in_view:
@@ -465,11 +484,11 @@ subdirectory = "alert" if user_number < 12 else "sleepy"
 os.makedirs(os.path.join(parent_directory, subdirectory), exist_ok=True)
 
 # Make a copy of the values + hz interpolated file
-duplicated_csv_filename = f"{user_number}_ESS_{timestamp}.csv"
+duplicated_csv_filename = f"{timestamp}.{user_number}.csv"
 shutil.copy(output_csv_filename, os.path.join(parent_directory, subdirectory, duplicated_csv_filename))
 print(f"Interpolated CSV file duplicated with timestamp: {duplicated_csv_filename}")
 
 
-print("*****************************")
+print("****************************")
 print("Thank you for participating!")
-print("*****************************")
+print("****************************")
