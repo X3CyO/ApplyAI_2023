@@ -11,7 +11,8 @@ The program works and has an accuracy of ___. The 3 trends identified, used had 
 The application will be used in an undergraduate research study in the near future regarding memory encoding.
 
 
-Techniques used in Python: 
+Techniques used in Python:
+
 Computer Vision: Deep learning for distance tracking (MIDAS), Optical Flow to limit false blinks registering from rapid movement, and Face-mesh for blink recognition (media pipe), combined to determine facial orientation (to also limit false blinks).
 Analytics: K-means
 Statistics: U-test, T-test, and Mann-whitney.
