@@ -4,7 +4,7 @@ Creating a computer vision program that analyzes measures of fatigue/sleepiness 
 
 Blinking Metrics are a quantifiable variable that has been extracted using a high-speed camera to identify sleepiness trends, but we currently lack a more commonly available tool for the average person to adequately capture enough frames to identify their own level of sleepiness from.
 
-Because of this, I combined two base models from git-hub together, and heavily modified them to create a program that tracks blinking metrics for live classification of sleepiness using a standardized, low-quality web camera (640x480).
+Because of this, I combined two base models from git-hub together, and heavily modified them to create a program that tracks blinking metrics for live classification of sleepiness using a standardized, low-quality web camera resolution (640x480).
 
 The program works and has an accuracy of ___. The 3 trends identified, used had p-values of ~.08 from a dataset of 57 subjects. The classification models within the ensemble had Mann-Whitney agreement scores of .8, .6, and .4 between the actual data and the trained models.
 
