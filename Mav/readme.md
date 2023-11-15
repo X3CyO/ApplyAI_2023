@@ -5,7 +5,7 @@ Real quick; just need you to install the requirements.txt, then we're off to the
 Just need to run this in your Terminal: pip install -r requirements.txt
 
 
-Once everthing is downloaded, if you have multiple cameras, you can run python camera_select.py to see what camera you want to use. The value is added into the analyze_link.py file, otherwise it will automatically use the "0" camera.
+Once everything is downloaded, if you have multiple cameras, you can run python camera_select.py to see what camera you want to use. This value is then added into the analyze_link.py file at the "Camera" line, which will automatically use the "0" camera.
 
 
 then you run python analyze_blink.py from the terminal to run the blink capture
