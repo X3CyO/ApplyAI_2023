@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------------------------
 Creating a computer vision program that analyzes measures of fatigue/sleepiness to optimize studying patterns for students using indicators.
----------------------------------------------------------------------------------------------------------------------
+____________________________________________________________________________________________________________________
 
 Blinking Metrics are a quantifiable variable that has been extracted using a high-speed camera to identify sleepiness trends, but we currently lack a more commonly available tool for the average person to adequately capture enough frames to identify their own level of sleepiness from.
 
@@ -13,4 +13,4 @@ The application will be used in an undergraduate research study in the near futu
 ---------------------------------------------------------------------------------------------------------------------
 Techniques used in Python: 
 Computer Vision: Deep learning for distance tracking (MIDAS), Optical Flow to limit false blinks registering from rapid movement, and Face-mesh for blink recognition (media pipe), combined to determine facial orientation (to also limit false blinks). Analytics: K-means Statistics: U-test, T-test, and Mann-whitney. Machine-Learning: Random forest & Deterministic models using interpolation, as an Ensemble.
----------------------------------------------------------------------------------------------------------------------
+_____________________________________________________________________________________________________________________
